@@ -89,3 +89,39 @@ def test_computer_promotion_is_replayable() -> None:
     rebuilt = Session("computer")
     rebuilt._rebuild(session.moves)
     assert rebuilt.view() == session.view()
+
+
+def test_captured_promoted_pawn_shows_as_its_new_piece(tmp_path: Path) -> None:
+    session = Session()
+    session.save_path = str(tmp_path / "game.save.json")
+    session.dispatch({"action": "promotion-setup"})
+    for source, target, promotion in [
+        ("b7", "a8", "Q"),  # The a-pawn promotes to a queen, capturing a rook.
+        ("c8", "b7", None),
+        ("a1", "a2", None),
+        ("b7", "a8", None),  # Black's bishop captures the promoted queen.
+    ]:
+        session.dispatch(
+            {
+                "action": "move",
+                "source": source,
+                "target": target,
+                "promotion": promotion,
+            }
+        )
+    assert session.notation[-1] == "b7xa8"
+    assert session.position[0]["a8"] == "bB"
+
+    # White lost a queen (the promoted pawn) and the pawn Black took on g2; the
+    # promoted pawn is not counted twice, and White's original queen is still on d1.
+    captured = ["bP", "bR", "wP", "wQ"]
+    assert session.view()["captured"] == captured
+    assert session.position[0]["d1"] == "wQ"
+
+    session.dispatch({"action": "save"})
+    restored = Session()
+    restored.load(session.save_path)
+    assert restored.view()["captured"] == captured
+
+    session.dispatch({"action": "undo"})
+    assert session.view()["captured"] == ["bP", "bR", "wP"]
