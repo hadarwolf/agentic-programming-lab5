@@ -5,7 +5,7 @@ team decisions this builds on. Ely builds undo on a separate `undo` branch at th
 and both branches merge into `main` afterwards.
 
 ## Starting point
-- Branch from `main` at commit `b5b2341` ("Record replayable move history and set up checks"):
+- Branch from the latest `main` on `team`, the same commit Ely branches `undo` from:
   `git pull team main && git switch -c save-load`.
 - Install the dev tools: `pip install -r requirements-dev.txt` (pytest, pytest-cov, ruff, mypy).
 - `Session.moves` in `session.py` is the replayable history: a list of `(source, target)` tuples
