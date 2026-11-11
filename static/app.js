@@ -91,6 +91,7 @@ function render() {
     return item;
   }));
   document.querySelector('#undo').disabled = !state.moves.length;
+  document.querySelector('#redo').disabled = !state.can_redo;
   document.querySelector('#captured-panel').hidden = !Object.hasOwn(state, 'captured');
   const captured = state.captured || [];
   document.querySelector('#captured').replaceChildren(...captured.map(pieceGlyph));
@@ -165,7 +166,7 @@ document.querySelector('#controls').onclick = async event => {
     message.textContent = ''; render();
     const saved = {save: 'Game saved', load: 'Game loaded'}[button.dataset.action];
     if (saved) message.textContent = saved;
-    if (button.dataset.action === 'load') await computerReply();
+    if (['load', 'redo'].includes(button.dataset.action)) await computerReply();
   } catch (error) { message.textContent = error.message; }
   finally { busy = false; }
 };

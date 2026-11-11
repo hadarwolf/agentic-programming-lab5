@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from captured import missing_pieces
-from game import new_position
+from game import Position, new_position
 from session import Session
 
 
@@ -13,12 +13,8 @@ def promoted_session(tmp_path: Path) -> Session:
     session = Session()
     session.save_path = str(tmp_path / "game.save.json")
     session.dispatch({"action": "promotion-setup"})
-    session.dispatch(
-        {"action": "move", "source": "b7", "target": "a8", "promotion": "N"}
-    )
-    session.dispatch(
-        {"action": "move", "source": "g2", "target": "h1", "promotion": "R"}
-    )
+    session.dispatch({"action": "move", "source": "b7", "target": "a8", "promotion": "N"})
+    session.dispatch({"action": "move", "source": "g2", "target": "h1", "promotion": "R"})
     return session
 
 
@@ -38,19 +34,19 @@ def test_promotion_choice_survives_save_and_load(tmp_path: Path) -> None:
     restored.load(original.save_path)
 
     assert restored.view() == original.view()
-    assert restored.position[0]["a8"] == "wN"
-    assert restored.position[0]["h1"] == "bR"
+    assert restored.position.board["a8"] == "wN"
+    assert restored.position.board["h1"] == "bR"
     assert restored.moves == original.moves
 
 
 def test_undo_keeps_earlier_promotion_and_removes_later_one(tmp_path: Path) -> None:
     session = promoted_session(tmp_path)
     session.dispatch({"action": "undo"})
-    assert session.position[0]["a8"] == "wN"
-    assert session.position[0]["g2"] == "bP"
+    assert session.position.board["a8"] == "wN"
+    assert session.position.board["g2"] == "bP"
     session.dispatch({"action": "undo"})
-    assert session.position[0]["b7"] == "wP"
-    assert session.position[0]["a8"] == "bR"
+    assert session.position.board["b7"] == "wP"
+    assert session.position.board["a8"] == "bR"
 
 
 def test_promoted_pawn_is_not_shown_as_captured(tmp_path: Path) -> None:
@@ -58,23 +54,19 @@ def test_promoted_pawn_is_not_shown_as_captured(tmp_path: Path) -> None:
     session.dispatch({"action": "promotion-setup"})
     before = session.view()["captured"]
     assert before == ["bP", "wP"]
-    session.dispatch(
-        {"action": "move", "source": "b7", "target": "a8", "promotion": "Q"}
-    )
+    session.dispatch({"action": "move", "source": "b7", "target": "a8", "promotion": "Q"})
     assert session.view()["captured"] == ["bP", "bR", "wP"]
-    session.dispatch(
-        {"action": "move", "source": "g2", "target": "h1", "promotion": "Q"}
-    )
+    session.dispatch({"action": "move", "source": "g2", "target": "h1", "promotion": "Q"})
     assert session.view()["captured"] == ["bP", "bR", "wP", "wR"]
 
 
 def test_captured_queen_still_shown_after_promoting_to_a_queen() -> None:
     # White's original queen was captured, then the a-pawn took the a8 rook and became
     # a queen: the board has one white queen, as at the start, but two pieces were lost.
-    board = new_position()[0]
+    board = new_position().board
     del board["d1"], board["a2"]
     board["a8"] = "wQ"
-    assert missing_pieces([board, "b"], ["wQ"]) == ["bR", "wQ"]
+    assert missing_pieces(Position(board, "b"), ["wQ"]) == ["bR", "wQ"]
 
 
 def test_computer_promotion_is_replayable() -> None:
@@ -82,9 +74,7 @@ def test_computer_promotion_is_replayable() -> None:
     session.dispatch({"action": "promotion-setup"})
     # promotion-setup starts a two-player game; switch to the computer for Black's reply.
     session.opponent = "computer"
-    session.dispatch(
-        {"action": "move", "source": "b7", "target": "a8", "promotion": "Q"}
-    )
+    session.dispatch({"action": "move", "source": "b7", "target": "a8", "promotion": "Q"})
     session.dispatch({"action": "computer-move"})
     rebuilt = Session("computer")
     rebuilt._rebuild(session.moves)
@@ -110,13 +100,13 @@ def test_captured_promoted_pawn_shows_as_its_new_piece(tmp_path: Path) -> None:
             }
         )
     assert session.notation[-1] == "b7xa8"
-    assert session.position[0]["a8"] == "bB"
+    assert session.position.board["a8"] == "bB"
 
     # White lost a queen (the promoted pawn) and the pawn Black took on g2; the
     # promoted pawn is not counted twice, and White's original queen is still on d1.
     captured = ["bP", "bR", "wP", "wQ"]
     assert session.view()["captured"] == captured
-    assert session.position[0]["d1"] == "wQ"
+    assert session.position.board["d1"] == "wQ"
 
     session.dispatch({"action": "save"})
     restored = Session()

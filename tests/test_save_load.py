@@ -97,7 +97,7 @@ def test_loaded_game_continues(tmp_path: Path) -> None:
     restored.load(original.save_path)
     play_all(restored, [("b1", "c3")])
 
-    assert restored.moves == CAPTURE_GAME + [("b1", "c3")]
+    assert restored.moves == [*CAPTURE_GAME, ("b1", "c3")]
 
 
 def test_loaded_checkmate_is_over(tmp_path: Path) -> None:
@@ -150,7 +150,7 @@ def test_bad_input_leaves_session_unchanged(tmp_path: Path, content: Any) -> Non
     before = session.view()
     moves_before = list(session.moves)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"(?i)save file"):
         session.load(write(tmp_path, content))
 
     assert session.view() == before
