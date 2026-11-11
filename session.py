@@ -1,5 +1,7 @@
 """Application actions and information shown beside the board."""
 
+import json
+
 from computer import choose_move
 from game import (
     legal_moves,
@@ -20,7 +22,12 @@ PROMOTION_SETUP = [
 ]
 
 
+SAVE_VERSION = 1
+
+
 class Session:
+    save_path = "chess.save.json"  # Used by the "save" and "load" actions.
+
     def __init__(self, opponent="human"):
         if opponent not in ("human", "computer"):
             raise ValueError("Unknown opponent")
@@ -55,6 +62,54 @@ class Session:
         if self.opponent == "computer" and self.position[1] == "w" and len(self.moves) >= 2:
             count = 2
         self._rebuild(self.moves[:-count])
+
+    def save(self, path):
+        """Write the game as JSON. Only the moves are stored; load rebuilds the rest."""
+        data = {
+            "version": SAVE_VERSION,
+            "opponent": self.opponent,
+            "moves": [list(m) for m in self.moves],
+            "redo": [],
+        }
+        with open(path, "w", encoding="utf-8") as file:
+            json.dump(data, file)
+
+    def load(self, path):
+        """Replace this game with the one saved at path. On any error, nothing changes."""
+        try:
+            with open(path, encoding="utf-8") as file:
+                text = file.read()
+        except OSError as error:
+            reason = error.strerror or error
+            raise ValueError(f"Could not read save file {path}: {reason}") from error
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError as error:
+            raise ValueError(f"Save file is not valid JSON: {error.msg}") from error
+        if not isinstance(data, dict):
+            raise ValueError("Save file must contain a JSON object")  # noqa: TRY004
+        version = data.get("version")
+        if type(version) is not int or version != SAVE_VERSION:
+            raise ValueError(f"Unsupported save file version: {version!r}")
+        opponent = data.get("opponent")
+        if opponent not in ("human", "computer"):
+            raise ValueError(f"Unknown opponent in save file: {opponent!r}")
+        moves = data.get("moves")
+        if not isinstance(moves, list) or not all(
+            isinstance(m, list) and m and all(isinstance(part, str) for part in m)
+            for m in moves
+        ):
+            raise ValueError("Save file moves must be a list of lists of strings")
+        # Build the game in a separate session, so self is untouched if replay fails.
+        loaded = type(self)(opponent)
+        try:
+            loaded._rebuild(moves)
+        except (ValueError, TypeError) as error:
+            bad = moves[len(loaded.moves)]
+            raise ValueError(
+                f"Save file move {len(loaded.moves) + 1} ({'-'.join(bad)}) is illegal: {error}"
+            ) from error
+        self.__dict__.update(loaded.__dict__)
 
     def after_move(self):
         pass
@@ -97,6 +152,10 @@ class Session:
             self.__init__()
             for source, target in PROMOTION_SETUP:
                 self.play(source, target)
+        elif command == "save":
+            self.save(self.save_path)
+        elif command == "load":
+            self.load(self.save_path)
         else:
             raise ValueError("Unknown action")
         return self.view()
