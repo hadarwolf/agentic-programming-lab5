@@ -8,6 +8,7 @@ from game import (
     legal_moves,
     move,
     new_position,
+    promotes,
     status,
     winner,
 )
@@ -34,14 +35,15 @@ class Session:
             raise ValueError("Unknown opponent")
         self.position = new_position()
         self.notation = []
-        self.moves = []  # Replayable history: one (source, target) tuple per move.
+        self.moves = []  # Replayable history: (source, target[, promotion]) per move.
         self.captured = []
         self.opponent = opponent
 
-    def play(self, source, target):
-        label = move(self.position, source, target)
+    def play(self, source, target, promotion=None):
+        label = move(self.position, source, target, promotion)
         self.notation.append(label)
-        self.moves.append((source, target))
+        # A promotion is stored as a third item, so replay makes the same choice.
+        self.moves.append((source, target) if promotion is None else (source, target, promotion))
         self.after_move()
 
     def _rebuild(self, moves):
@@ -114,7 +116,10 @@ class Session:
         self.__dict__.update(loaded.__dict__)
 
     def after_move(self):
-        self.captured = missing_pieces(self.position)
+        # Every game starts from the initial position with White to move, so a
+        # move's index tells which side made it.
+        promoted = ["wb"[i % 2] + m[2] for i, m in enumerate(self.moves) if len(m) > 2]
+        self.captured = missing_pieces(self.position, promoted)
 
     def view(self):
         return {
@@ -139,13 +144,16 @@ class Session:
         if command == "move":
             if self.computer_to_move():
                 raise ValueError("Wait for the computer's move")
-            self.play(action.get("source"), action.get("target"))
+            self.play(action.get("source"), action.get("target"), action.get("promotion"))
         elif command == "computer-move":
             if not self.computer_to_move():
                 raise ValueError("It is not the computer's turn")
             self.play(*choose_move(self.position))
         elif command == "legal":
-            return {"targets": legal_moves(self.position, action.get("source"))}
+            source = action.get("source")
+            targets = legal_moves(self.position, source)
+            return {"targets": targets,
+                    "promotions": [t for t in targets if promotes(self.position, source, t)]}
         elif command == "undo":
             self.undo()
         elif command == "new":
