@@ -26,12 +26,21 @@ class Session:
             raise ValueError("Unknown opponent")
         self.position = new_position()
         self.notation = []
+        self.moves = []  # Replayable history: one (source, target) tuple per move.
         self.opponent = opponent
 
     def play(self, source, target):
         label = move(self.position, source, target)
         self.notation.append(label)
+        self.moves.append((source, target))
         self.after_move()
+
+    def _rebuild(self, moves):
+        """Reset to a new game with the same opponent, then replay moves through play()."""
+        moves = [tuple(m) for m in moves]
+        self.__init__(self.opponent)
+        for m in moves:
+            self.play(*m)
 
     def after_move(self):
         pass
