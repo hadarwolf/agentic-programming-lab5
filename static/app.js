@@ -146,6 +146,9 @@ document.querySelector('#controls').onclick = async event => {
     state = await request({action: button.dataset.action, opponent: button.dataset.opponent});
     selected = null; targets = [];
     message.textContent = ''; render();
+    const saved = {save: 'Game saved', load: 'Game loaded'}[button.dataset.action];
+    if (saved) message.textContent = saved;
+    if (button.dataset.action === 'load') await computerReply();
   } catch (error) { message.textContent = error.message; }
   finally { busy = false; }
 };
