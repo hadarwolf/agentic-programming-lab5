@@ -42,6 +42,20 @@ class Session:
         for m in moves:
             self.play(*m)
 
+    def undo(self):
+        """Take back the last move; against the computer, also its reply.
+
+        Against the computer, one undo returns to the player's turn: it removes the
+        computer's reply and the player's move. If the player's move ended the game,
+        so there was no reply, it removes only that move. With no moves it does nothing.
+        """
+        if not self.moves:
+            return
+        count = 1
+        if self.opponent == "computer" and self.position[1] == "w" and len(self.moves) >= 2:
+            count = 2
+        self._rebuild(self.moves[:-count])
+
     def after_move(self):
         pass
 
@@ -75,6 +89,8 @@ class Session:
             self.play(*choose_move(self.position))
         elif command == "legal":
             return {"targets": legal_moves(self.position, action.get("source"))}
+        elif command == "undo":
+            self.undo()
         elif command == "new":
             self.__init__(action.get("opponent", "human"))
         elif command == "promotion-setup":
