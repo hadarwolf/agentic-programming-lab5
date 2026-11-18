@@ -1,63 +1,64 @@
-# Chess workshop
+# ♟️ Chess: Testing New Features
 
-A local chess game in Python, for two players or against the computer. Requires Python 3.10
-or later. Ask your coding agent to create `.venv` and install `requirements-dev.txt` in it.
-Activate the environment in each terminal you use:
+**Agentic Programming · Lab 5: Testing New Features**
+*Hadar Wolf & Ely Grunfeld*
+
+A local two-player (or player-vs-computer) chess game in Python with a browser UI. We started from the course's [chess workshop](https://github.com/avivz/aicode-lab05-chess) starter. Working on separate branches with coding agents, we added **undo, save/load and redo**, merged two supplied feature branches (**captured pieces** and **pawn promotion**), and covered every combination of features with tests.
+
+✅ **112 tests pass** · `ruff check` clean · `ruff format` clean · `mypy --strict` clean
+
+## What we built
+
+| Feature | Notes |
+|---|---|
+| **Replayable history** | `Session.moves` is the single source of truth. Undo, redo, load and promotion all rebuild the position by replaying moves (`Session._rebuild`), so derived state like captured pieces stays correct. |
+| **Undo** | Against the computer, one undo takes back the computer's reply and your move. In a two-player game it takes back one move. With no moves, it does nothing. |
+| **Save / load** | A JSON file (`*.save.json`) stores the opponent type, the moves and the redo history. Loading into a fresh session restores everything, including undo and redo. |
+| **Redo** | Replays exactly the moves that undo removed, including the computer's reply and any promotion choice. A new move clears redo. |
+| **Captured pieces + promotion** | The supplied branches, merged in order and then tested together with undo and save/load. |
+| **Checks** | The position became a typed dataclass. ruff and mypy are configured, the computer's tie-breaks are seeded so tests are deterministic, and [`CLAUDE.md`](CLAUDE.md) tells agents to run all four checks. |
+
+Team decisions are written down in [`NOTES.md`](NOTES.md), and the save/load spec is in [`SPEC.md`](SPEC.md).
+
+## Run
+
+Requires Python 3.10+.
 
 ```sh
-source .venv/bin/activate
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\Activate.ps1
+pip install -r requirements-dev.txt
+python server.py                   # open http://127.0.0.1:8000
 ```
+
+## Checks
 
 ```sh
-python3 server.py
-# Open http://127.0.0.1:8000
-python -m pytest
+python -m pytest -q --cov=. --cov-report=term-missing
+ruff check .
+ruff format --check .
+mypy --strict .
 ```
 
-Start a game against another person or against the computer. Against the computer you
-play White; it looks one move ahead and plays the move that leaves it the most material,
-preferring checkmate. Select a piece, then a highlighted destination. White moves first.
-Standard movement, captures, check, checkmate and stalemate apply: you cannot leave your
-own king in check, checkmate wins, and stalemate is a draw. Pawns initially remain pawns at
-the far rank; a later branch adds promotion to a piece the player chooses. There is no clock.
+## How we worked
 
-**Not supported: castling and en passant.** Neither move exists in this game. The other
-draw rules (insufficient material, threefold repetition, the fifty-move rule) are not
-implemented either.
-
-To reach promotion quickly from a new game, play a2-a4, h7-h5, a4-a5, h5-h4, a5-a6,
-h4-h3, a6-b7, h3-g2. White can then play b7 to a8. In tests, the `promotion-setup` action
-plays the same moves.
+- One feature = one branch = its own tests. The merge order was undo and save/load, then captured pieces, then promotion, then redo.
+- After every merge we ran all the checks and added a test of the features *together* (for example `test_undo_save_load.py` and `test_promotion_combined.py`).
+- Our working plan and checklists are in [`docs/lab05-plan.md`](docs/lab05-plan.md).
+- There are two agent-made reviews: [`docs/code-review.md`](docs/code-review.md) covers everything merged into `main`, and [`lab05-review.md`](lab05-review.md) is the lab review of `777b904`.
+- The original assignment and the starter's README are in [`docs/ASSIGNMENT.md`](docs/ASSIGNMENT.md).
 
 ## Files
 
-- `game.py`: board and turn in a position list; movement, check, checkmate and stalemate.
-- `session.py`: game actions, the opponent, displayed move notation, and sidebar information.
-- `computer.py`: the computer opponent.
-- `server.py`: one in-memory game, HTTP actions, and static files. Restarting loses the game.
-- `static/`: browser presentation and square selection. All movement decisions run in Python.
-- `tests/`: starter behavior checks.
+- `game.py`: board, moves, check, checkmate, stalemate (castling and en passant aren't supported)
+- `session.py`: game actions, history (undo, redo, save/load), opponent, notation, sidebar
+- `captured.py`: captured-pieces tracking
+- `computer.py`: a computer opponent that looks one move ahead
+- `server.py`: HTTP actions plus static files
+- `static/`: the browser UI
+- `tests/`: 112 tests, including combined-feature tests
 
-## Working together
+---
 
-Start your two branches from `main`. One partner implements save/load; the other implements
-undo. Merge both into `main`, then merge the supplied `feature/captured-pieces` and
-`feature/promotion` branches into `main` in that order. After each merge, run the existing
-tests and try the combined game before asking your agent to repair anything. Add checks
-for the behavior you establish. Implement redo together using the undo mechanism you created.
-
-Save/load must restore the game in a fresh instance, including whether the opponent is a
-person or the computer, and preserve enough information to undo moves made before saving.
-Undo must restore captured pieces and the side to move; decide together what it does
-against the computer. Undo at the beginning does nothing. Move notation should describe the
-currently played continuation. New game clears the previous game.
-
-The captured-pieces display shows pieces actually captured, with their type at capture.
-Promotion alone is not a capture. Undoing a capture removes it from the display.
-
-Redo restores the undone move, including capture and promotion; against the computer,
-decide what it restores. A different move after undo discards redo. For this workshop,
-save/load should also preserve the ability to redo.
-
-Establish checks for interactions as you integrate features. Supplied branches are workshop
-contributions to inspect and integrate, not a guarantee of correctness in every combination.
+Part of my **Agentic Programming** labs (HUJI, AICODE 67723):
+[Lab 1 · CTF Arena](https://github.com/hadarwolf/agentic-programming-lab1) · [Lab 2 · LLM failure modes](https://github.com/hadarwolf/agentic-programming-lab2) · [Lab 3 · Coin Dash with several agents](https://github.com/hadarwolf/agentic-programming-lab3) · [Lab 4 · Traffic monitor spec](https://github.com/hadarwolf/agentic-programming-lab4) · **Lab 5 · Chess: testing new features** · [Lab 6 · Binary search explainer video](https://github.com/hadarwolf/agentic-programming-lab6)
